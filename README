@@ -1,0 +1,36 @@
+PlaylistCollection jQuery plugin
+  - jquery.plc.js
+  - Written by Sean Murphy
+
+
+Requirements:
+  - jQuery (http://jquery.com/)
+  - soundManager2 (http://www.schillmania.com/projects/soundmanager2/)
+
+
+Example:
+
+  var sounds = [
+    'mp3/coins.mp3',
+    'mp3/800hz.mp3',
+    'mp3/walking.mp3',
+    'mp3/bass.mp3'
+  ];
+
+  soundManager.url = 'swf/';
+  soundManager.flashVersion = 9;
+  soundManager.consoleOnly = true;
+
+  var plc;
+
+  soundManager.onready(function() { 
+    plc = soundManager.PlaylistCollection();
+    
+    var fooPL = plc.createPlaylist({ 'name' : 'foo' });
+    fooPL.addSongList(sounds);
+
+    plc.createPlaylist({ 'id' : 'bar' });
+    plc.playlists.bar.addSong('http://example.com/foo.mp3');
+
+    plc.playlists.foo.play();
+  });
