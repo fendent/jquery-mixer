@@ -1,4 +1,4 @@
-// jquery.plc.js - Sean Murphy (2011)
+// jquery.mixer.js - Sean Murphy (2011)
 
 (function($, sm) {
 
