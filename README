@@ -26,11 +26,19 @@ Example:
   soundManager.onready(function() { 
     plc = soundManager.PlaylistCollection();
     
+    // Standard playlist here.
     var fooPL = plc.createPlaylist({ 'name' : 'foo' });
     fooPL.addSongList(sounds);
-
-    plc.createPlaylist({ 'id' : 'bar' });
-    plc.playlists.bar.addSong('http://example.com/foo.mp3');
-
     plc.playlists.foo.play();
+
+    // Create an automated playlist with the getNextTrack() callback.
+    plc.createPlaylist({
+      'id'   : 'radio'
+      'auto' : true,
+      'getNextTrack' : function() {
+        var url = $.ajax(...);
+
+        return url;
+      }
+    });
   });
