@@ -78,7 +78,6 @@
 
       'currentTrack' : null,
       'currentPos' : 0,
-      'nextPos'    : 0,
 
       'tracks' : [],
       'trackData' : {}
@@ -113,11 +112,7 @@
 
     this.onTrackChange = function() { };
 
-    this.onSongLoad = function(success) {
-      if (success === false) {
-        plist.nextPos++;
-      }
-    };
+    this.onSongLoad = function() { };
 
     this.onDestruct = function() { };
 
@@ -127,7 +122,7 @@
 
     this.onFinish = function() {
       plist.onTrackChange();
-      plist.play(plist.nextPos); 
+      plist.next(); 
     };
 
     /***** Audio Manipulation *****/
@@ -152,7 +147,7 @@
       });
 
       sound.onposition(sound.duration - this.prefetchTime, function() {
-        plist.trackData[plist.tracks[plist.nextPos]].load();
+        plist.trackData[plist.tracks[plist.currentPos + 1]].load();
       });
 
       this.tracks.push(sound.sID);
@@ -184,7 +179,6 @@
 
       if (plist.tracks[index]) {
         plist.currentPos = index;
-        plist.nextPos = index + 1;
 
         plist.playSong(plist.tracks[plist.currentPos]);
       }
@@ -215,7 +209,7 @@
 
     // Plays the next track in the playlist.
     this.next = function() {
-      this.play(plist.nextPos);
+      this.play(plist.currentPos + 1);
 
       return this;
     };
