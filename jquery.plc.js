@@ -1,4 +1,4 @@
-// jquery.plc - Sean Murphy (2011)
+// jquery.plc.js - Sean Murphy (2011)
 
 (function($, sm) {
 
@@ -14,7 +14,7 @@
       'currentPlaylist' : null,
       'currentTrack' : null,
 
-      'onTrackChange' : function(){},
+      'onTrackChange' : this.onTrackChange,
     }, options);
 
     /***********************/
@@ -28,9 +28,14 @@
     this.createPlaylist = function(options) {
       $.extend(true, options, { 'manager' : this }, options);
 
-      var playlist = new PlaylistCollection.Playlist(options);
+      var playlist = new PCPlaylist(options);
 
       plc.playlists[playlist.id] = playlist;
+
+      // Start playing if automatic playlist
+      if (playlist.auto === true) {
+        playlist.play();
+      }
 
       return playlist;
     };
@@ -43,28 +48,19 @@
       return this;
     };
 
-    /***** Helper Methods *****/
-
-    // Returns a track URL from provided arguments.
-    this.getNextTrack = function(playlistID, trackNumber) {
-      var playlist = plc.playlists[playlistID];
-      return (playlist.trackData[playlist.tracks[trackNumber + 1]].url || undefined);
-    };
-
     /***** Events *****/
 
     // Called whenever the track changes.
-    this.onTrackChange = function(playlistID, trackNumber) {
-    };
+    this.onTrackChange = function(playlistID, trackNumber) { };
   };
 
 
   /*
-    Class: PlaylistCollection.Playlist
+    Class: PCPlaylist
   */
 
 
-  PlaylistCollection.Playlist = function(plConfig) {
+  var PCPlaylist = function(plConfig) {
     var plist = this;
 
     this.id = plConfig.name || Math.floor(Math.random()*100000);
@@ -74,39 +70,21 @@
       'id'   : this.id,
       'name' : 'default',
 
-      'prefetchTime' : 2000, // msecs
+      'auto' : false,
+
+      'prefetchTime' : 30000, // in milliseconds (default: 30s)
 
       'currentTrack' : null,
-      'currentPos' : 0,
+      'trackBuffer'  : [],
 
-      'tracks' : [],
-      'trackData' : {}
+      'currentPosition' : 0,
 
+      'tracks'    : [],
+
+      'getNextTrack' : this.getNextTrack,
     }, plConfig);
 
     /*************************************/
-
-    // init() function with options and callback.
-    this.init = function(options, callback) {
-      // TODO Not sure if this is what you meant for an init callback for the playlist.
-      if (arguments.length > 0) {
-        if (typeof options === 'function') {
-          var callback = options;
-        }
-        else if (options instanceof Object == true) {
-          $.extend(true, plist, options);
-        }
-
-        if (callback !== undefined && typeof callback === 'function') {
-          callback.call(plist);
-        }
-      }
-
-      return plist.id;
-    };
-
-    /*************************************/
-
 
     /***** Callbacks *****/
 
@@ -125,6 +103,10 @@
       plist.next(); 
     };
 
+    this.getNextTrack = function() {
+      return null;
+    };
+
     /***** Audio Manipulation *****/
 
     // Creates an SMSound object
@@ -132,7 +114,7 @@
       return sm.createSound(options);
     };
 
-    // Add a song to the playlist from provided URL.
+    // Add a song to a playlist from the provided URL.
     this.addSong = function(url) {
       var sound = this.createSound({
         'id'  : url,
@@ -146,12 +128,9 @@
         'onfinish' : plist.onFinish,
       });
 
-      sound.onposition(sound.duration - this.prefetchTime, function() {
-        plist.trackData[plist.tracks[plist.currentPos + 1]].load();
-      });
+      sound.onposition(sound.duration - this.prefetchTime, this.fetchNextTrack);
 
       this.tracks.push(sound.sID);
-      this.trackData[sound.sID] = sound;
 
       return this;
     },
@@ -170,20 +149,82 @@
 
     /***** Playlist Controls *****/
 
-    this.play = function(index) {
-      var index = typeof index == 'number' ? index : 0;
-
-      if (plist.trackData[plist.tracks[index]].readyState === 2) {
-        return plist.play(index + 1);
-      }
-
-      if (plist.tracks[index]) {
-        plist.currentPos = index;
-
-        plist.playSong(plist.tracks[plist.currentPos]);
+    this.fetchNextTrack = function() {
+      if (plist.auto === true) {
+        plist.addAutoSong();
       }
       else {
-        // TODO Error Handling
+        sm.getSoundById(plist.tracks[plist.currentPosition + 1]).load();
+      }
+    };
+
+    this.addAutoSong = function() {
+      var url = this.getNextTrack();
+
+      if (url === null) {
+        return null;
+      }
+
+      var sound = this.createSound({
+        'id'  : url,
+        'url' : url,
+
+        'autoLoad' : true,
+
+        'onpause' : plist.onPause,
+
+        'onplay' : function() {
+          plist.currentTrack = this.sID;
+
+          var prefetch = this.duration - plist.prefetchTime;
+          this.onposition(prefetch = prefetch < 0 ? 0 : prefetch, plist.fetchNextTrack);
+        },
+
+        'onload' : function() {
+          plist.trackBuffer.push(this.sID);
+
+          if (plist.currentTrack === null) {
+            plist.playSong(plist.trackBuffer.shift());
+          }
+        },
+
+        'onfinish' : function() {
+          plist.currentTrack = null;
+
+          if (plist.trackBuffer.length > 0) {
+            plist.playSong(plist.trackBuffer.shift());
+          }
+
+          this.destruct();
+        }
+      });
+
+      if (sound.readyState === 3) {
+        return plist.addAutoSong();
+      }
+
+      return sound;
+    };
+
+    this.play = function(index) {
+      if (plist.auto === true) {
+        plist.addAutoSong();
+      }
+      else {
+        var index = typeof index == 'number' ? index : 0;
+
+        if (plist.tracks[index]) {
+          if (sm.getSoundById(plist.tracks[index]).readyState === 2) {
+            return plist.play(index + 1);
+          }
+
+          plist.currentPosition = index;
+
+          plist.playSong(plist.tracks[plist.currentPosition]);
+        }
+        else {
+          // TODO Error Handling
+        }
       }
 
       return this;
@@ -191,14 +232,13 @@
 
     // Plays the track in the playlist with the given index.
     this.playSong = function(id) {
-      if (plist.trackData[id]) { // index >= 0 && index < plist.tracks.length) {
+      var sound = sm.getSoundById(id);
+
+      if (sound !== null) {
         sm.stopAll(); // Stops everything.
 
-        // Set the new current track and play it.
-        this.currentTrack = id;
-
         // Also need to maybe have a callback to set the playlist
-        this.trackData[id].play();
+        sound.play();
       }
       else {
         // TODO Error Handling
@@ -209,7 +249,13 @@
 
     // Plays the next track in the playlist.
     this.next = function() {
-      this.play(plist.currentPos + 1);
+      if (plist.auto === true) {
+        plist.fetchNextTrack();
+        plist.addAutoSong();
+      }
+      else {
+        this.play(plist.currentPosition + 1);
+      }
 
       return this;
     };
@@ -217,9 +263,8 @@
     /***** Playlist Manipulation *****/
 
     this.remove = function(index) {
-      plist.trackData[plist.tracks[index]].destruct();
+      sm.getSoundById(plist.tracks[index]).destruct();
       plist.tracks.splice(index, 1);
-      delete plist.trackData[plist.tracks[index]];
 
       return this;
     };
