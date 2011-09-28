@@ -1,6 +1,6 @@
 PlaylistCollection jQuery plugin
-  - jquery.plc.js
-  - Written by Sean Murphy
+  - jquery.mixer.js
+  - A jQuery/soundManager2 plugin written by Sean Murphy
 
 
 Requirements:
