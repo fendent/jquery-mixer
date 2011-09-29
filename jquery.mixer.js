@@ -209,6 +209,20 @@
       return this;
     };
 
+    // Plays the previous track in the playlist.
+    this.prev = function() {
+      this.play(plist.currentPosition - 1);
+
+      return this;
+    };
+
+    // Pauses the track.
+    this.pause = function() {
+      sm.getSoundById(plist.tracks[plist.currentPosition]).pause();
+
+      return this;
+    };
+
     /***** Playlist Manipulation *****/
 
     this.remove = function(index) {
