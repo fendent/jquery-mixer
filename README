@@ -10,35 +10,45 @@ Requirements:
 
 Example:
 
-  var sounds = [
-    'mp3/coins.mp3',
-    'mp3/800hz.mp3',
-    'mp3/walking.mp3',
-    'mp3/bass.mp3'
-  ];
+var sounds = [
+  'mp3/coins.mp3',
+  'mp3/800hz.mp3',
+  'mp3/walking.mp3',
+  'mp3/bass.mp3'
+];
 
-  soundManager.url = 'swf/';
-  soundManager.flashVersion = 9;
-  soundManager.consoleOnly = true;
+var radio_tracks = [
+  'mp3/foo.mp3',
+  'mp3/bar.mp3',
+  'mp3/baz.mp3'
+];
 
-  var plc;
+soundManager.url = 'swf/';
+soundManager.flashVersion = 9;
+soundManager.consoleOnly = true;
 
-  soundManager.onready(function() { 
-    plc = soundManager.PlaylistCollection();
-    
-    // Standard playlist here.
-    var fooPL = plc.createPlaylist({ 'name' : 'foo' });
-    fooPL.addSongList(sounds);
-    plc.playlists.foo.play();
+soundManager.onready(function() {
+  window.plc = soundManager.PlaylistCollection();
+ 
+  // Create a manual playlist
+  var fooPL = plc.createPlaylist({ 'name' : 'foo' });
+  fooPL.addSongList(sounds);
 
-    // Create an automated playlist with the getNextTrack() callback.
-    plc.createPlaylist({
-      'id'   : 'radio'
-      'auto' : true,
-      'getNextTrack' : function() {
-        var url = $.ajax(...);
+  // Make an automatic/radio playlist
+  var radio = plc.createPlaylist({
+    'name' : 'radio',
+    'auto' : true,
 
-        return url;
-      }
-    });
+    // Defines where the next track comes from.
+    'getNextTrack' : function(trackID, playlistID) {
+      // Grab from a random list
+      var url = sounds[Math.floor(Math.random()*sounds.length)];
+
+      // Or make an ajax request
+      // $.ajax({ ... });
+
+      // But always end with this.
+      this.addSong(url);
+    }
   });
+});
