@@ -55,10 +55,10 @@
       $.extend(true, options, { 'manager' : this }, options);
 
       if (options.auto === true) {
-        var playlist = new PCAPlaylist(options);
+        var playlist = new PCAPlaylist(options).play();
       }
       else {
-        var playlist = new PCPlaylist(options).play();
+        var playlist = new PCPlaylist(options);
       }
 
       plc.playlists[playlist.id] = playlist;
